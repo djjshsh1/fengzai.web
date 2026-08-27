@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>枫崽小窝 · 后台管理</title>
+		<!-- 不依赖外部SDK，直接用REST API -->
+		<style>
+			*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",system-ui,sans-serif;}
+			body{background:linear-gradient(135deg,#fce4ec 0%,#f8bbd0 45%,#e9cfff 100%);min-height:100vh;padding:16px;}
+			.container{max-width:600px;margin:0 auto;}
+			/* 登录页 */
+			.login-box{background:rgba(255,255,255,0.96);border-radius:24px;padding:40px 30px;margin-top:60px;box-shadow:0 8px 32px rgba(156,39,176,0.18);text-align:center;}
+			.login-box h1{font-size:24px;background:linear-gradient(135deg,#ad1457,#9c27b0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
+			.login-box p{font-size:13px;color:#999;margin-bottom:24px;}
+			.login-box input{width:100%;padding:14px;border:2px solid #d8b2c8;border-radius:12px;font-size:16px;text-align:center;outline:none;transition:border-color .2s;}
+			.login-box input:focus{border-color:#9c27b0;}
+			.login-box button{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#ad1457,#9c27b0);color:#fff;font-size:16px;font-weight:600;cursor:pointer;margin-top:12px;box-shadow:0 4px 12px rgba(156,39,176,0.3);}
+			.login-box button:hover{transform:translateY(-1px);}
+			.login-error{color:#dc2626;font-size:13px;margin-top:10px;display:none;}
+			/* 后台主页 */
+			.admin-header{background:rgba(255,255,255,0.96);border-radius:20px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 16px rgba(156,39,176,0.12);}
+			.admin-header h2{font-size:18px;background:linear-gradient(135deg,#ad1457,#9c27b0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+			.admin-header button{padding:8px 16px;border:none;border-radius:10px;background:#f3d7e8;color:#ad1457;font-size:13px;font-weight:600;cursor:pointer;}
+			/* 统计卡片 */
+			.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+			.stat-card{background:rgba(255,255,255,0.96);border-radius:16px;padding:14px 10px;text-align:center;box-shadow:0 2px 10px rgba(156,39,176,0.08);}
+			.stat-num{font-size:22px;font-weight:800;color:#9c27b0;}
+			.stat-label{font-size:11px;color:#999;margin-top:2px;}
+			/* Tab切换 */
+			.tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;}
+			.tab-btn{flex:1;min-width:70px;padding:10px 8px;border:none;border-radius:10px;background:rgba(255,255,255,0.7);color:#666;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s;}
+			.tab-btn.active{background:linear-gradient(135deg,#ad1457,#9c27b0);color:#fff;box-shadow:0 2px 8px rgba(156,39,176,0.3);}
+			/* 数据面板 */
+			.panel{background:rgba(255,255,255,0.96);border-radius:20px;padding:16px;box-shadow:0 4px 16px rgba(156,39,176,0.08);min-height:300px;}
+			.panel-title{font-size:15px;font-weight:700;color:#9c27b0;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+			.panel-title button{padding:6px 12px;border:none;border-radius:8px;background:#fee2e2;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer;}
+			.data-list{display:flex;flex-direction:column;gap:8px;}
+			.data-item{background:#faf5f8;border-radius:10px;padding:10px 12px;font-size:13px;color:#444;line-height:1.6;position:relative;}
+			.data-item .item-time{font-size:11px;color:#999;margin-bottom:4px;}
+			.data-item .item-del{position:absolute;top:8px;right:8px;width:22px;height:22px;border:none;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+			.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+			.photo-item{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;}
+			.photo-item img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+			.photo-item .photo-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(220,38,38,0.8);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+			.photo-item .photo-cat{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);color:#fff;font-size:10px;padding:2px 4px;text-align:center;}
+			.empty{text-align:center;padding:40px 20px;color:#999;font-size:14px;}
+			.loading{text-align:center;padding:40px;color:#999;font-size:14px;}
+			/* 图片预览弹窗 */
+			.img-modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;}
+			.img-modal.show{display:flex;}
+			.img-modal img{max-width:100%;max-height:90vh;border-radius:12px;}
+			.img-modal .close{position:absolute;top:20px;right:20px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.2);color:#fff;font-size:20px;cursor:pointer;}
+			.hidden{display:none !important;}
+		</style>
+	</head>
+	<body>
+		<!-- 登录页 -->
+		<div class="container" id="loginPage">
+			<div class="login-box">
+				<h1>🔐 枫崽小窝后台</h1>
+				<p>请输入管理员密码登录</p>
+				<input
+					type="password"
+					id="loginPwd"
+					placeholder="输入密码"
+					maxlength="20"
+				/>
+				<button onclick="doLogin()">登 录</button>
+				<div class="login-error" id="loginError">密码错误</div>
+			</div>
+		</div>
+
+		<!-- 后台主页 -->
+		<div class="container hidden" id="adminPage">
+			<div class="admin-header">
+				<h2>📊 数据总览</h2>
+				<button onclick="doLogout()">退出</button>
+			</div>
+			<div class="stats-grid" id="statsGrid"></div>
+			<div class="tabs" id="tabs">
+				<button class="tab-btn active" data-tab="toilet">🚽如厕</button>
+				<button class="tab-btn" data-tab="photo">📸拍照</button>
+				<button class="tab-btn" data-tab="music">🎵播放</button>
+				<button class="tab-btn" data-tab="songs">📜歌单</button>
+				<button class="tab-btn" data-tab="log">📒日志</button>
+				<button class="tab-btn" data-tab="trace">🐶痕迹</button>
+				<button class="tab-btn" data-tab="call">☎通话</button>
+			</div>
+			<div class="panel" id="dataPanel">
+				<div class="loading">加载中...</div>
+			</div>
+		</div>
+
+		<!-- 图片预览 -->
+		<div class="img-modal" id="imgModal" onclick="closeImg()">
+			<button class="close">×</button>
+			<img id="modalImg" src="" alt="preview" />
+		</div>
+
+		<script>
+			// ===== 配置（和 index.html 保持一致）=====
+			const SUPABASE_URL = "https://rhzdrdsuwfgtfotxopxv.supabase.co";
+			const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoemRyZHN1d2ZndGZvdHhvcHh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NDc2OTQsImV4cCI6MjEwMzMyMzY5NH0.Suds3Q4CO3qzFKEQuBK-R_MEKBDLQI5RLs0yQmakmIw";
+			const ADMIN_PASSWORD = "5201314"; // 后台密码，可自行修改
+
+			// REST API模式，不依赖SDK
+			const REST_BASE = SUPABASE_URL + "/rest/v1";
+			const REST_HEADERS = {
+				"apikey": SUPABASE_KEY,
+				"Authorization": "Bearer " + SUPABASE_KEY,
+				"Content-Type": "application/json",
+				"Prefer": "return=representation"
+			};
+			const sbInited = true;
+
+			// ===== 登录逻辑 =====
+			function doLogin(){
+				const pwd = document.getElementById("loginPwd").value;
+				if(pwd === ADMIN_PASSWORD){
+					document.getElementById("loginPage").classList.add("hidden");
+					document.getElementById("adminPage").classList.remove("hidden");
+					sessionStorage.setItem("fengzai_admin", "1");
+					// 直接加载数据（REST API不需要等待SDK）
+					loadStats();
+					loadTab("toilet");
+				}else{
+					document.getElementById("loginError").style.display = "block";
+				}
+			}
+			function doLogout(){
+				sessionStorage.removeItem("fengzai_admin");
+				location.reload();
+			}
+			// 自动登录
+			if(sessionStorage.getItem("fengzai_admin") === "1"){
+				document.getElementById("loginPage").classList.add("hidden");
+				document.getElementById("adminPage").classList.remove("hidden");
+			}
+
+			// ===== Tab切换 =====
+			document.querySelectorAll(".tab-btn").forEach(btn=>{
+				btn.addEventListener("click", ()=>{
+					document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+					btn.classList.add("active");
+					loadTab(btn.dataset.tab);
+				});
+			});
+
+			// ===== 统计数据 =====
+			async function loadStats(){
+				const tables = ["toilet_records","photo_records","music_history","songs","report_logs","visit_traces","call_history"];
+				const labels = ["如厕","拍照","播放","歌单","日志","痕迹","通话"];
+				let html = "";
+				for(let i=0;i<tables.length;i++){
+					try{
+						const res = await fetch(`${REST_BASE}/${tables[i]}?select=*&limit=1000`, {headers: REST_HEADERS});
+						const data = res.ok ? await res.json() : [];
+						html += `<div class="stat-card"><div class="stat-num">${data.length||0}</div><div class="stat-label">${labels[i]}</div></div>`;
+					}catch(e){
+						html += `<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">${labels[i]}</div></div>`;
+					}
+				}
+				document.getElementById("statsGrid").innerHTML = html;
+			}
+
+			// ===== 加载各Tab数据 =====
+			async function loadTab(tab){
+				const panel = document.getElementById("dataPanel");
+				panel.innerHTML = '<div class="loading">加载中...</div>';
+				const tableMap = {
+					toilet:{table:"toilet_records",title:"🚽 如厕报备记录",render:renderToilet},
+					photo:{table:"photo_records",title:"📸 拍照记录",render:renderPhoto},
+					music:{table:"music_history",title:"🎵 播放历史",render:renderMusic},
+					songs:{table:"songs",title:"📜 歌单管理",render:renderSongs},
+					log:{table:"report_logs",title:"📒 报备日志",render:renderLog},
+					trace:{table:"visit_traces",title:"🐶 访问痕迹",render:renderTrace},
+					call:{table:"call_history",title:"☎ 通话记录",render:renderCall}
+				};
+				const cfg = tableMap[tab];
+				try{
+					const res = await fetch(`${REST_BASE}/${cfg.table}?select=*&order=created_at.desc&limit=200`, {headers: REST_HEADERS});
+					if(!res.ok){panel.innerHTML=`<div class="empty">加载失败：HTTP ${res.status}</div>`;return;}
+					const data = await res.json();
+					cfg.render(data, panel, cfg.title);
+				}catch(e){
+					panel.innerHTML = `<div class="empty">加载异常：${e.message}</div>`;
+				}
+			}
+
+			function renderToilet(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无数据</div>`;return;}
+				let html = `<div class="panel-title">${title}<button onclick="clearTable('toilet_records')">清空全部</button></div><div class="data-list">`;
+				data.forEach(item=>{
+					html += `<div class="data-item"><div class="item-time">${formatDate(item.created_at)}</div>开始：${item.start_time}｜结束：${item.end_time}｜用时：${item.duration}<button class="item-del" onclick="delRow('toilet_records','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			function renderPhoto(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无照片</div>`;return;}
+				let html = `<div class="panel-title">${title}<button onclick="clearTable('photo_records')">清空全部</button></div><div class="photo-grid">`;
+				data.forEach(item=>{
+					html += `<div class="photo-item"><img src="${item.photo_url}" onclick="previewImg('${item.photo_url}')"><div class="photo-cat">${item.cat_name||item.cat||""}</div><button class="photo-del" onclick="delRow('photo_records','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			function renderMusic(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无数据</div>`;return;}
+				let html = `<div class="panel-title">${title}<button onclick="clearTable('music_history')">清空全部</button></div><div class="data-list">`;
+				data.forEach(item=>{
+					html += `<div class="data-item"><div class="item-time">${formatDate(item.created_at)}</div>🎵 ${item.song_name}（${item.play_time}）<button class="item-del" onclick="delRow('music_history','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			function renderSongs(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无歌曲，在前端添加后会自动同步到这里</div>`;return;}
+				let html = `<div class="panel-title">${title}（共${data.length}首）<button onclick="clearTable('songs')">清空全部</button></div><div class="data-list">`;
+				data.forEach(item=>{
+					html += `<div class="data-item"><div class="item-time">${formatDate(item.created_at)}</div>🎵 <strong>${item.name}</strong><br><span style="font-size:11px;color:#888;word-break:break-all;">${item.url}</span><button class="item-del" onclick="delRow('songs','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			function renderLog(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无数据</div>`;return;}
+				let html = `<div class="panel-title">${title}<button onclick="clearTable('report_logs')">清空全部</button></div><div class="data-list">`;
+				data.forEach(item=>{
+					html += `<div class="data-item"><div class="item-time">${formatDate(item.created_at)}｜类型：${item.type}</div>${item.text}<button class="item-del" onclick="delRow('report_logs','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			function renderTrace(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无数据</div>`;return;}
+				let html = `<div class="panel-title">${title}<button onclick="clearTable('visit_traces')">清空全部</button></div><div class="data-list">`;
+				data.forEach(item=>{
+					html += `<div class="data-item"><div class="item-time">${formatDate(item.created_at)}</div>设备：${item.location||"未知"}｜IP：${item.ip||"未知"}<button class="item-del" onclick="delRow('visit_traces','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			function renderCall(data, panel, title){
+				if(!data.length){panel.innerHTML=`<div class="panel-title">${title}</div><div class="empty">暂无数据</div>`;return;}
+				let html = `<div class="panel-title">${title}<button onclick="clearTable('call_history')">清空全部</button></div><div class="data-list">`;
+				data.forEach(item=>{
+					html += `<div class="data-item"><div class="item-time">${formatDate(item.created_at)}</div>👤 ${item.name}｜📞 ${item.phone}<button class="item-del" onclick="delRow('call_history','${item.id}')">×</button></div>`;
+				});
+				html += "</div>";
+				panel.innerHTML = html;
+			}
+
+			// ===== 删除操作 =====
+			async function delRow(table, id){
+				if(!confirm("确定删除这条记录吗？")) return;
+				try{
+					await fetch(`${REST_BASE}/${table}?id=eq.${id}`, {method:"DELETE", headers: REST_HEADERS});
+					const activeTab = document.querySelector(".tab-btn.active").dataset.tab;
+					loadTab(activeTab);
+					loadStats();
+				}catch(e){alert("删除失败："+e.message);}
+			}
+
+			async function clearTable(table){
+				if(!confirm("确定清空全部数据吗？此操作不可恢复！")) return;
+				try{
+					// 先查所有id再逐个删（REST API不支持neq删除所有）
+					const res = await fetch(`${REST_BASE}/${table}?select=id&limit=1000`, {headers: REST_HEADERS});
+					if(res.ok){
+						const rows = await res.json();
+						for(const row of rows){
+							await fetch(`${REST_BASE}/${table}?id=eq.${row.id}`, {method:"DELETE", headers: REST_HEADERS});
+						}
+					}
+					const activeTab = document.querySelector(".tab-btn.active").dataset.tab;
+					loadTab(activeTab);
+					loadStats();
+				}catch(e){alert("清空失败："+e.message);}
+			}
+
+			// ===== 工具函数 =====
+			function formatDate(isoStr){
+				if(!isoStr) return "";
+				const d = new Date(isoStr);
+				return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+			}
+			function previewImg(url){
+				document.getElementById("modalImg").src = url;
+				document.getElementById("imgModal").classList.add("show");
+			}
+			function closeImg(){
+				document.getElementById("imgModal").classList.remove("show");
+			}
+			// 回车登录
+			document.getElementById("loginPwd").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
+		</script>
+	</body>
+</html>
